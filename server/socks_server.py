@@ -5,15 +5,18 @@ from enum import Enum
 
 class Proxy:
     def __init__(self, name: str = "DefaultProxy"):
-        # self.server_obj = server_obj
         self.name = name
+        self.broker = None
 
-    def recieve(self, sender, message):
-        print(f"{self.name}: Recieved from {sender}: {message}")
+    def set_broker(self, broker):
+        self.broker = broker
+
+    def receive(self, sender, message):
+        print(f"{self.name}: Received from {sender}: {message}")
 
     def send(self, receiver, message):
         print(f"{self.name}: Sent to {receiver}: {message}")
-        # self.server_obj.send_message(receiver, message)
+        self.broker.send_message(receiver, message)
 
 
 class SocksRole(Enum):
@@ -37,6 +40,8 @@ class SocksServer:
         self.ADDR = (self.SERVER, self.PORT)
 
         self.proxy = proxy
+        proxy.set_broker(self)
+
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.role = role
 
@@ -133,13 +138,13 @@ class SocksServer:
             else:
                 proxy = client['proxy']
                 if proxy:
-                    proxy.recieve(addr, message)
+                    proxy.receive(addr, message)
 
                 if message != "OK":
                     # print("Sending OK")
                     self.send_message(addr, "OK")
 
-        print(f"Connecion to {addr} has been dropped.")
+        print(f"Connection to {addr} has been dropped.")
         self.clients.pop(addr)
         conn.close()
 
