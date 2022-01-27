@@ -1,6 +1,6 @@
 from server.socks_server import SocketClient, Proxy
 from time import sleep
-import sys
+
 proxy = Proxy(name="Client3 Proxy")
 cl3 = SocketClient(proxy=proxy, port=8080)
 
@@ -22,7 +22,6 @@ while True:
             print(e)
             break
     else:
+        if cl3.connection_attempts_limit_exceeded:
+            break
         sleep(1)
-
-# cl3 = None
-# sys.exit()

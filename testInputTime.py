@@ -10,12 +10,12 @@ while True:
     connected = cl3.connected
     curr_time = localtime()
     curr_clock = strftime("%H:%M:%S", curr_time)
-    print(curr_clock)
 
 
     if connected:
         try:
             msg = curr_clock
+            print(msg)
             cl3.send_message(cl3.ADDR, msg)
             sleep(2)
         except OSError as e:
@@ -25,6 +25,8 @@ while True:
             print(e)
             break
     else:
+        if cl3.connection_attempts_limit_exceeded:
+            break
         sleep(1)
 
 # cl3 = None

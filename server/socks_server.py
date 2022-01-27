@@ -153,6 +153,7 @@ class SocketObject:
             pass
         return connected
 
+
 class SocketClient(SocketObject):
     MAX_RECONNECTIONS = 10
 
@@ -182,7 +183,7 @@ class SocketClient(SocketObject):
         thread.start()
 
     def reconnect(self):
-        while not self.connected and self.connection_attempts < self.MAX_RECONNECTIONS:
+        while not self.connected and not self.connection_attempts_limit_exceeded:
             try:
                 self.connection_attempts += 1
                 self.connect_to_server()
@@ -193,6 +194,10 @@ class SocketClient(SocketObject):
             self.connection_attempts = 0
         else:
             raise RuntimeError(f"Could not connect to server at {self.ADDR}")
+
+    @property
+    def connection_attempts_limit_exceeded(self):
+        return self.connection_attempts > self.MAX_RECONNECTIONS
 
 
 class SocketServer(SocketObject):
