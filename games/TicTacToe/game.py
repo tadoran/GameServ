@@ -9,12 +9,19 @@ from games.spectator import Spectator
 class TicTacToeGame:
     def __init__(self):
         self.field = np.zeros((3, 3), dtype='int8')
-        self.players: list[TicTacToeAbstractPlayer] = [TicTacToePersonPlayer(self), TicTacToeComputerPlayer(self)]
-        shuffle(self.players)
+        self.max_players = 2
+        self.players: list[TicTacToeAbstractPlayer] = []
         self.win_conditions = ["123", "456", "789", "147", "258", "369", "159", "357"]
         self.started = False
 
+    def add_player(self, player: TicTacToeAbstractPlayer):
+        self.players.append(player)
+
     def start_game(self):
+        if len(self.players) != self.max_players:
+            raise ValueError("Not enough players!")
+
+        shuffle(self.players)
         self.started = True
         spectator.print("Game is started")
         while self.started:
@@ -62,6 +69,7 @@ class TicTacToeGame:
             if cannot_win:
                 self.win_conditions.remove(wc)
             if win:
+                self.started = False
                 break
         return win
 
@@ -69,6 +77,8 @@ class TicTacToeGame:
 if __name__ == '__main__':
     g = TicTacToeGame()
     spectator = Spectator()
+    g.add_player(TicTacToePersonPlayer(g))
+    g.add_player(TicTacToeComputerPlayer(g))
     p1, p2 = g.players
 
     g.start_game()
