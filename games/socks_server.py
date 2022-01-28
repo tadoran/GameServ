@@ -1,5 +1,6 @@
 import threading
 
+from games.spectator import Spectator
 from server.socks_server import SocketServer
 from games.server_proxy import GameServerProxy
 
@@ -20,4 +21,5 @@ class GameServer(SocketServer):
 
 
 if __name__ == '__main__':
+    spectator = Spectator()
     game_server = GameServer(proxy=GameServerProxy())

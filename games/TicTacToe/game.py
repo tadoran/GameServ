@@ -7,6 +7,8 @@ from games.spectator import Spectator
 
 
 class TicTacToeGame:
+    # global spectator
+
     def __init__(self):
         self.field = np.zeros((3, 3), dtype='int8')
         self.max_players = 2

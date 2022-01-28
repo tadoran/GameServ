@@ -28,7 +28,6 @@ class GameServerProxy(GameProxy):
         self.clients = {}
         self.game = Game()
 
-        self.protocol = Protocol()
 
         new_connection = ProtocolCommand("connected", self.receive_new_connection, None)
         self.protocol.add_command(new_connection)
@@ -38,6 +37,32 @@ class GameServerProxy(GameProxy):
 
         user_input = ProtocolCommand("user_input", self.on_input_receive, self.on_input_request)
         self.protocol.add_command(user_input)
+
+    def __command_send_and_wait(self, *args, **kwargs):
+        a = asyncio.to_thread(self._command_send_and_wait, *args, **kwargs)
+        return a
+
+    # async def command_send_and_wait(self, receiver, command: str, timeout: int = 20, *args, **kwargs):
+    def command_send_and_wait(self, receiver, command: str, timeout: int = 20, *args, **kwargs):
+        send_callback = self.protocol.get_send_callback(command)
+        send_callback(*args, **kwargs)
+        sent_time = time()
+
+        # awaiting_response_key = receiver, command
+        # self.awaiting_response[awaiting_response_key] = True
+        # while self.awaiting_response[awaiting_response_key] and time() - sent_time < timeout:
+        #     # await asyncio.sleep(1)
+        #     self.broker.parse_response()
+        #     sleep(0.1)
+
+        # result = self.awaiting_response.pop(awaiting_response_key, None)
+        result = self.broker.parse_response(self.broker.clients[self.clients.get(receiver)]['conn'])
+        if result == "OK":
+            result = self.broker.parse_response(self.broker.clients[self.clients.get(receiver)]['conn'])
+        if result:
+            return self.protocol.parse_on_receive(result)[2]
+        else:
+            raise TimeoutError(f"There was no response from {receiver} to {command} command.")
 
     def on_input_receive(self, sender: str, message: str):
         print(sender, message)

@@ -63,7 +63,7 @@ class TicTacToePersonPlayer(TicTacToeAbstractPlayer):
 
 
 class TicTacToeHumanSocketPlayer(TicTacToeAbstractPlayer):
-    def __init__(self, game, proxy, name:str):
+    def __init__(self, game, proxy, name: str):
         super(TicTacToeHumanSocketPlayer, self).__init__(game)
         self.proxy = proxy
         self.name = name
@@ -75,8 +75,16 @@ class TicTacToeHumanSocketPlayer(TicTacToeAbstractPlayer):
         while not valid:
             # coords_to_hit_str = input("Select x,y to place your mark:\n")
             # coords_to_hit_str = self.proxy.Protocol.get_send_callback("user_input")
-            send_callback = self.proxy.protocol.get_send_callback("user_input")
-            send_callback(self.name, "Select x,y to place your mark:\n")
+            # send_callback = self.proxy.protocol.get_send_callback("user_input")
+            # send_callback(self.name, "Select x,y to place your mark:\n")
+
+            coords_to_hit_str = self.proxy.command_send_and_wait(
+                                                                receiver=self.name,
+                                                                command="user_input",
+                                                                player_id=self.name,
+                                                                input_str="Select x,y to place your mark:\n"
+                                                                )
+
 
             # ].prepare(self.name, "Select x,y to place your mark:\n")
             try:

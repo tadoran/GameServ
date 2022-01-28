@@ -11,4 +11,8 @@ if __name__ == '__main__':
     socks_client = SocketClient(proxy=playerProxy)
     # player.connect()
     print("hello")
-    sleep(100)
+    # sleep(100)
+    while socks_client.connected:
+        # print(f"Game is still active, waiting on line!")
+        sleep(5)
+    print(f"Game was ended. So, we quit too.")
