@@ -16,7 +16,7 @@ class GameServer(SocketServer):
             self.clients[address] = {"conn": conn, "proxy": self.proxy, "thread": thread}
 
             thread.start()
-            a = self.proxy.protocol['connected'].receive_callback(address)
+            a = self.proxy.protocol['connected'].receive_callback(self.name, address)
 
 
 if __name__ == '__main__':

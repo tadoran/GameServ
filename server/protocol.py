@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-from typing import Callable, Iterable, Optional
+from typing import Callable, Iterable, Optional, Any
 
 
 @dataclass
 class ProtocolCommand:
     abbr: str
-    receive_callback: Optional[Callable]  # Action when message is received
+    receive_callback: Optional[Callable[[str, str], Any]]  # Action when message is received
     send_callback: Optional[Callable]  # Action when new message is going to be sent
 
     def __hash__(self):
@@ -43,4 +43,11 @@ class Protocol:
                 return "NotFound", self.missing_command, None
         except ValueError as e:
             print("Message is malformed, ignoring it")
+            return "NotFound", self.missing_command, None
+
+    def get_send_callback(self, command):
+        protocol_command = self._commands.get(command, None)
+        if protocol_command:
+            return protocol_command.send_callback
+        else:
             return "NotFound", self.missing_command, None

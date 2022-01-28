@@ -12,7 +12,6 @@ class AbstractPlayer(ABC):
         self.game = game
 
 
-
 class AbstractServerSideProxy:
     pass
 
@@ -61,6 +60,33 @@ class TicTacToePersonPlayer(TicTacToeAbstractPlayer):
 
     def __str__(self):
         return "Kostia"
+
+
+class TicTacToeHumanSocketPlayer(TicTacToeAbstractPlayer):
+    def __init__(self, game, proxy, name:str):
+        super(TicTacToeHumanSocketPlayer, self).__init__(game)
+        self.proxy = proxy
+        self.name = name
+
+    def get_turn(self):
+        valid = False
+        x, y = 0, 0
+
+        while not valid:
+            # coords_to_hit_str = input("Select x,y to place your mark:\n")
+            # coords_to_hit_str = self.proxy.Protocol.get_send_callback("user_input")
+            send_callback = self.proxy.protocol.get_send_callback("user_input")
+            send_callback(self.name, "Select x,y to place your mark:\n")
+
+            # ].prepare(self.name, "Select x,y to place your mark:\n")
+            try:
+                x, y = map(int, coords_to_hit_str.split(","))
+                valid = True
+            except ValueError:
+                spectator.print("Invalid input")
+                valid = False
+
+        return self.make_move((x - 1, y - 1))
 
 
 class TicTacToeComputerPlayer(TicTacToeAbstractPlayer):

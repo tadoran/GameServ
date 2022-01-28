@@ -11,4 +11,4 @@ if __name__ == '__main__':
     socks_client = SocketClient(proxy=playerProxy)
     # player.connect()
     print("hello")
-    sleep(10)
+    sleep(100)

@@ -13,6 +13,7 @@ class TicTacToeGame:
         self.players: list[TicTacToeAbstractPlayer] = []
         self.win_conditions = ["123", "456", "789", "147", "258", "369", "159", "357"]
         self.started = False
+        self.spectator = Spectator()
 
     def add_player(self, player: TicTacToeAbstractPlayer):
         self.players.append(player)
@@ -23,12 +24,12 @@ class TicTacToeGame:
 
         shuffle(self.players)
         self.started = True
-        spectator.print("Game is started")
+        self.spectator.print("Game is started")
         while self.started:
             for player in self.players:
                 if not self.started:
                     break
-                spectator.print(f"{player} - it is your turn.")
+                self.spectator.print(f"{player} - it is your turn.")
                 move = player.get_turn()
                 while not move:
                     move = player.get_turn()
@@ -38,17 +39,17 @@ class TicTacToeGame:
 
     def make_move(self, player: TicTacToeAbstractPlayer, coords: tuple[int, int]):
         if self.field[coords] != 0:
-            spectator.print(f"Position {coords} is occupied!")
+            self.spectator.print(f"Position {coords} is occupied!")
             return False
         else:
-            spectator.print(f"{player} goes to {coords}")
+            self.spectator.print(f"{player} goes to {coords}")
             self.field[coords] = player.position
-            spectator.print(self)
+            self.spectator.print(self)
             if self.check_win(player):
-                spectator.print(f"{player} wins!")
+                self.spectator.print(f"{player} wins!")
                 self.started = False
             elif len(self.win_conditions) == 0:
-                spectator.print("Tie, no one wins!")
+                self.spectator.print("Tie, no one wins!")
                 self.started = False
         return True
 
@@ -77,6 +78,7 @@ class TicTacToeGame:
 if __name__ == '__main__':
     g = TicTacToeGame()
     spectator = Spectator()
+    g.spectator = spectator
     g.add_player(TicTacToePersonPlayer(g))
     g.add_player(TicTacToeComputerPlayer(g))
     p1, p2 = g.players
