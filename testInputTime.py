@@ -1,8 +1,14 @@
-from server.socks_server import SocketClient, Proxy
+from games.server_proxy import GameClientProxy
+from server.socks_server import SocketClient
+from server.proxy import Proxy
 from time import sleep, localtime, strftime
-import sys
+from games.chat.proxy import ChatProxy
 
-proxy = Proxy(name="Client3 Proxy")
+# proxy = Proxy(name="Time Daemon")
+# proxy = ChatProxy()
+proxy = GameClientProxy()
+
+
 cl3 = SocketClient(proxy=proxy, port=8080)
 
 connected = True
@@ -11,12 +17,10 @@ while True:
     curr_time = localtime()
     curr_clock = strftime("%H:%M:%S", curr_time)
 
-
     if connected:
         try:
             msg = curr_clock
-            print(msg)
-            cl3.send_message(cl3.ADDR, msg)
+            proxy.send(cl3.ADDRESS, msg)
             sleep(2)
         except OSError as e:
             print(e)
@@ -28,6 +32,3 @@ while True:
         if cl3.connection_attempts_limit_exceeded:
             break
         sleep(1)
-
-# cl3 = None
-# sys.exit()

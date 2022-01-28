@@ -1,4 +1,5 @@
-from server.socks_server import SocketClient, Proxy
+from server.socks_server import SocketClient
+from server.proxy import Proxy
 from time import sleep
 
 proxy = Proxy(name="Client3 Proxy")
@@ -13,7 +14,7 @@ while True:
             print(msg)
             if msg == SocketClient.DISCONNECT_MESSAGE:
                 break
-            cl3.send_message(cl3.ADDR, msg)
+            cl3.send_message(cl3.ADDRESS, msg)
             sleep(0.001)
         except OSError as e:
             print(e)

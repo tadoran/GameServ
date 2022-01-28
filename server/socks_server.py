@@ -3,21 +3,7 @@ import threading
 from enum import Enum
 from time import sleep
 
-
-class Proxy:
-    def __init__(self, name: str = "DefaultProxy"):
-        self.name = name
-        self.broker = None
-
-    def set_broker(self, broker):
-        self.broker = broker
-
-    def receive(self, sender, message):
-        print(f"{self.name}: Received from {sender}: {message}")
-
-    def send(self, receiver, message):
-        print(f"{self.name}: Sent to {receiver}: {message}")
-        self.broker.send_message(receiver, message)
+from server.proxy import Proxy
 
 
 class SocksRole(Enum):
@@ -33,9 +19,12 @@ class SocketObject:
     DISCONNECT_MESSAGE = "!DISCONNECT"
 
     def __init__(self, role: SocksRole, address=None, port=None, proxy: Proxy = None):
-        if address: self.SERVER = address
-        if port: self.PORT = port
-        self.ADDR = self.SERVER, self.PORT
+        if address:
+            self.SERVER = address
+        if port:
+            self.PORT = port
+
+        self.ADDRESS = self.SERVER, self.PORT
         self.proxy = proxy
         proxy.set_broker(self)
 
@@ -46,9 +35,9 @@ class SocketObject:
 
     def __str__(self):
         if hasattr(self, "name"):
-            return f"{self.name} at {self.ADDR}({self.role})"
+            return f"{self.name} at {self.ADDRESS}({self.role})"
         else:
-            return f"SocksServer at {self.ADDR}({self.role})"
+            return f"SocksServer at {self.ADDRESS}({self.role})"
 
     def send_message(self, address, message):
         client = self.clients.get(address, None)
@@ -99,29 +88,22 @@ class SocketObject:
 
         while connected:
             message = self.parse_response(conn)
-            if message == self.DISCONNECT_MESSAGE or message == "" or message is None:
+            if message in (self.DISCONNECT_MESSAGE, "", None):
                 connected = False
             else:
-                proxy = client['proxy']
-                if proxy:
-                    proxy.receive(address, message)
+                connection_proxy = client['proxy']
 
                 if message != "OK":
                     # print("Sending OK")
                     self.send_message(address, "OK")
 
+                    if connection_proxy:
+                        connection_proxy.receive(address, message)
+
         print(f"Connection to {address} has been dropped.")
         self.clients.pop(address)
         conn.close()
-        if hasattr(self, "auto_reconnect"):
-            self.reconnect()
 
-    # @property
-    # def connected(self):
-    #     # return not self.server._closed
-    #     try:
-    #         self.server.connect(self.ADDR)
-    #     except
     @property
     def connected(self) -> bool:
 
@@ -166,21 +148,26 @@ class SocketClient(SocketObject):
         self.reconnect()
 
     def connect_to_server(self):
-        # if attempt < self.MAX_RECONNECTIONS:
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        print(f"Connecting as client to {self.ADDR}")
+        print(f"Connecting as client to {self.ADDRESS}")
 
         try:
-            self.server.connect(self.ADDR)
+            self.server.connect(self.ADDRESS)
         except Exception as e:
             print(e)
             self.server = None
             return
 
-        thread = threading.Thread(target=self.listen_connection, kwargs={"address": self.ADDR}, daemon=True)
-        self.clients = {self.ADDR: {"conn": self.server, "proxy": self.proxy, "thread": thread}}
+        thread = threading.Thread(target=self.listen_connection, kwargs={"address": self.ADDRESS}, daemon=True)
+        self.clients = {self.ADDRESS: {"conn": self.server, "proxy": self.proxy, "thread": thread}}
 
         thread.start()
+
+    def listen_connection(self, address):
+        super(SocketClient, self).listen_connection(address)
+        if hasattr(self, "auto_reconnect"):
+            self.reconnect()
+
 
     def reconnect(self):
         while not self.connected and not self.connection_attempts_limit_exceeded:
@@ -193,7 +180,7 @@ class SocketClient(SocketObject):
         if self.connected:
             self.connection_attempts = 0
         else:
-            raise RuntimeError(f"Could not connect to server at {self.ADDR}")
+            raise RuntimeError(f"Could not connect to server at {self.ADDRESS}")
 
     @property
     def connection_attempts_limit_exceeded(self):
@@ -203,24 +190,22 @@ class SocketClient(SocketObject):
 class SocketServer(SocketObject):
     def __init__(self, address=None, port=None, proxy: Proxy = None):
         super(SocketServer, self).__init__(role=SocksRole.SERVER, address=address, port=port, proxy=proxy)
-        print(f"Starting socks server on {self.ADDR}")
-        self.server.bind(self.ADDR)
+        print(f"Starting socks server on {self.ADDRESS}")
+        self.server.bind(self.ADDRESS)
         self.clients = {}
         thread = threading.Thread(target=self.process_incoming_connections)
         thread.start()
 
     def process_incoming_connections(self):
         self.server.listen()
-        # print(f"[LISTENING] Server is listening on {self.SERVER}")
         while True:
-            conn, addr = self.server.accept()
+            conn, address = self.server.accept()
 
-            thread = threading.Thread(target=self.listen_connection, kwargs={"address": addr}, daemon=True)
-            self.clients[addr] = {"conn": conn, "proxy": self.proxy, "thread": thread}
+            thread = threading.Thread(target=self.listen_connection, kwargs={"address": address}, daemon=True)
+            self.clients[address] = {"conn": conn, "proxy": self.proxy, "thread": thread}
 
             thread.start()
-            # print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")
-            print(f"[ACTIVE CONNECTIONS] {self.connections_count}")
+            # print(f"[ACTIVE CONNECTIONS] {self.connections_count}")
 
     @property
     def connections_count(self):
@@ -230,13 +215,6 @@ class SocketServer(SocketObject):
 if __name__ == '__main__':
     # print("[STARTING] server is starting...")
     proxy = Proxy(name="ServerProxy")
+    # proxy = ChatProxy()
     server = SocketServer(proxy=proxy, port=8080)
     server.name = "Server"
-    # client1 = SocketObject(role=SocksRole.CLIENT, proxy=proxy, port=5050)
-    # client1.name = "Client1"
-    # client1.send_message(client1.ADDR, "client1 Hi")
-    # client2 = SocketObject(role=SocksRole.CLIENT, proxy=proxy, port=5050)
-    # client2.name = "Client2"
-    # client2.send_message(client2.ADDR, "client2 Hi")
-    # client2.send_message(client2.ADDR, "client2 Hi2")
-    # client1.send_message(client1.ADDR, "client1 Hi2")
