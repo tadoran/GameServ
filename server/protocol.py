@@ -1,13 +1,12 @@
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Optional
 
 
 @dataclass
 class ProtocolCommand:
     abbr: str
-    receive_callback: Callable # Action when message is recieved
-    send_callback: Callable
+    receive_callback: Optional[Callable]  # Action when message is received
+    send_callback: Optional[Callable]  # Action when new message is going to be sent
 
     def __hash__(self):
         return hash(self.abbr)
@@ -34,12 +33,14 @@ class Protocol:
     def missing_command(self, key, *args, **kwargs):
         raise AttributeError(f"Command {key} is not registered in {self.__class__.__name__}")
 
-    def get_message_handler(self, msg: str) -> tuple[Callable, Iterable]:
+    def parse_on_receive(self, msg: str) -> tuple[str, Optional[Callable], Optional[Iterable]]:
         try:
             command, args = msg.split(sep=":", maxsplit=1)
-            protocol_command = self._commands[command]
-            return protocol_command.abbr, protocol_command.receive_callback, args
+            protocol_command = self._commands.get(command, None)
+            if protocol_command:
+                return protocol_command.abbr, protocol_command.receive_callback, args
+            else:
+                return "NotFound", self.missing_command, None
         except ValueError as e:
             print("Message is malformed, ignoring it")
-            return self.missing_command, ()
-
+            return "NotFound", self.missing_command, None
