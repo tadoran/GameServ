@@ -31,6 +31,8 @@ class GameProxy(Proxy):
 
     def receive(self, sender, message):
         super(GameProxy, self).receive(sender, message)
+        if "get_user_id:" in message:
+            print("hi")
         try:
             abbr, receive_callback, args = self.protocol.parse_on_receive(message)
             response_callback_result = receive_callback(sender=sender, message=args)
@@ -92,7 +94,7 @@ class GameServerProxy(GameProxy):
             return result
 
     def on_input_receive(self, sender: str, message: str):
-        print(sender, message)
+        # print(sender, message)
         pass
 
     def on_input_request(self, player_id: str, input_str: str):
@@ -106,8 +108,8 @@ class GameServerProxy(GameProxy):
     def receive_new_connection(self, sender: str, message: str):
         address = message
 
-        print(f"There is new connection from {address}")
-        print(f"Requesting unique id")
+        # print(f"There is new connection from {address}")
+        # print(f"Requesting unique id")
         self.send(address, self.protocol['get_user_id'].encode_command("1"))
 
     def on_id_request(self, sender, message):  # noqa
@@ -156,7 +158,8 @@ class GameClientProxy(GameProxy):
         return str(self)
 
     def provide_id(self, sender, message):
-        print(sender, message)
+        # print(sender, message)
+        pass
 
     def receive(self, sender, message):
         super().receive(sender, message)

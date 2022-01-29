@@ -7,8 +7,7 @@ from server.socks_server import SocketClient
 class TicTacToeClientProxy(GameClientProxy):
     pass
 
-
-if __name__ == '__main__':
+def main():
     playerProxy = TicTacToeClientProxy()
     socks_client = SocketClient(proxy=playerProxy)
     # player.connect()
@@ -17,3 +16,6 @@ if __name__ == '__main__':
     while socks_client.connected:
         sleep(5)
     print(f"Game was ended. So, we quit too.")
+
+if __name__ == '__main__':
+    main()

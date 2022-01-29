@@ -65,7 +65,7 @@ class SocketObject:
                 try:
                     conn.send(send_length)
                     conn.send(message)
-                    print(f"{self}: message '{message}' was sent to {address}")
+                    # print(f"{self}: message '{message}' was sent to {address}")
                 except ConnectionResetError:
                     conn.close()
                     success = False

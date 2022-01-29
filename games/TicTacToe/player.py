@@ -84,7 +84,7 @@ class TicTacToeHumanSocketPlayer(TicTacToeAbstractPlayer):
                 x, y = map(int, coords_to_hit_str.split(","))
                 valid = True
             except ValueError:
-                spectator.print("Invalid input")
+                self.game.spectator.print("Invalid input")
                 valid = False
 
         return self.make_move((x - 1, y - 1))
