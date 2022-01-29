@@ -34,6 +34,8 @@ class Protocol:
         raise AttributeError(f"Command {key} is not registered in {self.__class__.__name__}")
 
     def parse_on_receive(self, msg: str) -> tuple[str, Optional[Callable], Optional[Iterable]]:
+        if msg == "OK":
+            return "NotFound", self.missing_command, None
         try:
             command, args = msg.split(sep=":", maxsplit=1)
             protocol_command = self._commands.get(command, None)

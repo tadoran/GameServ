@@ -1,5 +1,6 @@
 import socket
 import threading
+from queue import Queue
 from enum import Enum
 from time import sleep
 
@@ -33,6 +34,63 @@ class SocketObject:
 
         self.clients = {}
 
+        self.send_queue = Queue()
+        send_thread = threading.Thread(target=self._send_messages, daemon=True)
+
+        self.receive_queue = Queue()
+        receive_thread = threading.Thread(target=self._process_input_messages, daemon=True)
+
+        send_thread.start()
+        receive_thread.start()
+
+    def _send_messages(self):
+        while True:
+            task = self.send_queue.get(block=True)
+            address, message = task
+
+            success = False
+
+            client = self.clients.get(address, None)
+
+            if not client:
+                success = False
+                # return False
+            else:
+                conn = client['conn']
+
+                message = message.encode(self.FORMAT)
+                msg_length = len(message)
+                send_length = str(msg_length).encode(self.FORMAT)
+                send_length += b' ' * (self.HEADER - len(send_length))
+                try:
+                    conn.send(send_length)
+                    conn.send(message)
+                    print(f"{self}: message '{message}' was sent to {address}")
+                except ConnectionResetError:
+                    conn.close()
+                    success = False
+                    # return False
+                except OSError:  # [WinError 10038] Сделана попытка выполнить операцию на объекте, не являющемся сокетом
+                    conn.close()
+                    success = False
+                    # return False
+
+                finally:
+                    success = True
+
+                if not success:
+                    print(f"Could not send message {message} to {address}")
+
+    def _process_input_messages(self):
+        while True:
+            try:
+                task = self.receive_queue.get(block=True)
+                connection_proxy, address, message = task
+                thr = threading.Thread(target=connection_proxy.receive, args=(address, message))
+                thr.start()
+            except Exception as e:
+                print(e)
+
     def __str__(self):
         if hasattr(self, "name"):
             return f"{self.name} at {self.ADDRESS}({self.role})"
@@ -40,27 +98,7 @@ class SocketObject:
             return f"SocksServer at {self.ADDRESS}({self.role})"
 
     def send_message(self, address, message):
-        client = self.clients.get(address, None)
-        if not client:
-            return False
-        else:
-            conn = client['conn']
-
-        message = message.encode(self.FORMAT)
-        msg_length = len(message)
-        send_length = str(msg_length).encode(self.FORMAT)
-        send_length += b' ' * (self.HEADER - len(send_length))
-        try:
-            conn.send(send_length)
-            conn.send(message)
-        except ConnectionResetError:
-            conn.close()
-            return False
-        except OSError:  # [WinError 10038] Сделана попытка выполнить операцию на объекте, не являющемся сокетом
-            conn.close()
-            return False
-
-        return True
+        self.send_queue.put((address, message))
 
     def parse_response(self, conn) -> str:
         try:
@@ -98,7 +136,9 @@ class SocketObject:
                     self.send_message(address, "OK")
 
                     if connection_proxy:
-                        connection_proxy.receive(address, message)
+                        # print(f"Putting '{connection_proxy}', '{address}', '{message}' to receive_queue")
+                        self.receive_queue.put((connection_proxy, address, message))
+                        # connection_proxy.receive(address, message)
 
         print(f"Connection to {address} has been dropped.")
         self.clients.pop(address)
@@ -168,7 +208,6 @@ class SocketClient(SocketObject):
         if hasattr(self, "auto_reconnect"):
             self.reconnect()
 
-
     def reconnect(self):
         while not self.connected and not self.connection_attempts_limit_exceeded:
             try:
@@ -205,7 +244,6 @@ class SocketServer(SocketObject):
             self.clients[address] = {"conn": conn, "proxy": self.proxy, "thread": thread}
 
             thread.start()
-            # print(f"[ACTIVE CONNECTIONS] {self.connections_count}")
 
     @property
     def connections_count(self):
@@ -213,8 +251,6 @@ class SocketServer(SocketObject):
 
 
 if __name__ == '__main__':
-    # print("[STARTING] server is starting...")
     proxy = Proxy(name="ServerProxy")
-    # proxy = ChatProxy()
     server = SocketServer(proxy=proxy, port=8080)
     server.name = "Server"

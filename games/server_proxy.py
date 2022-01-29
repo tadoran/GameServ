@@ -1,19 +1,42 @@
+from time import sleep, time
+from typing import Any
+
 from games.TicTacToe.player import TicTacToeHumanSocketPlayer, TicTacToeComputerPlayer
+from games.spectator import Spectator
 from server.protocol import ProtocolCommand, Protocol
 from server.proxy import Proxy
 from games.TicTacToe.game import TicTacToeGame as Game
+
+
+class SocketSpectactor(Spectator):
+
+    def __init__(self, proxy: Proxy):
+        # super().__init__()
+        self.proxy = proxy
+
+    def print(self, new_txt, *args, **kwargs):
+        # super().print(new_txt, *args, **kwargs)
+        print_func = self.proxy.protocol.get_send_callback("print")
+        connected_clients = self.proxy.broker.clients
+        recievers = connected_clients.keys()
+        for client_address in recievers:
+            print_func(client_address, new_txt)
 
 
 class GameProxy(Proxy):
     def __init__(self, name="Game Proxy"):
         super(GameProxy, self).__init__(name=name)
         self.protocol = Protocol()
+        self.awaiting_response: dict[tuple[str, str], Any] = {}
 
     def receive(self, sender, message):
         super(GameProxy, self).receive(sender, message)
         try:
             abbr, receive_callback, args = self.protocol.parse_on_receive(message)
             response_callback_result = receive_callback(sender=sender, message=args)
+            is_waited = (sender, abbr) in self.awaiting_response
+            if is_waited:
+                self.awaiting_response[(sender, abbr)] = message
             if response_callback_result:
                 response = self.protocol[abbr].encode_command(response_callback_result)
                 self.send(sender, response)
@@ -27,7 +50,7 @@ class GameServerProxy(GameProxy):
         super(GameServerProxy, self).__init__("Game Server")
         self.clients = {}
         self.game = Game()
-
+        self.game.spectator = SocketSpectactor(self)
 
         new_connection = ProtocolCommand("connected", self.receive_new_connection, None)
         self.protocol.add_command(new_connection)
@@ -38,31 +61,35 @@ class GameServerProxy(GameProxy):
         user_input = ProtocolCommand("user_input", self.on_input_receive, self.on_input_request)
         self.protocol.add_command(user_input)
 
-    def __command_send_and_wait(self, *args, **kwargs):
-        a = asyncio.to_thread(self._command_send_and_wait, *args, **kwargs)
-        return a
+        print_to_client = ProtocolCommand("print", None, self.send_text_to_client)
+        self.protocol.add_command(print_to_client)
 
-    # async def command_send_and_wait(self, receiver, command: str, timeout: int = 20, *args, **kwargs):
+    # def __command_send_and_wait(self, *args, **kwargs):
+    #     a = asyncio.to_thread(self._command_send_and_wait, *args, **kwargs)
+    #     return a
+
+    def send_text_to_client(self, receiver, message):
+        encoded_message = self.protocol['print'].encode_command(message)
+        self.send(receiver, encoded_message)
+
     def command_send_and_wait(self, receiver, command: str, timeout: int = 20, *args, **kwargs):
         send_callback = self.protocol.get_send_callback(command)
         send_callback(*args, **kwargs)
-        sent_time = time()
 
-        # awaiting_response_key = receiver, command
-        # self.awaiting_response[awaiting_response_key] = True
-        # while self.awaiting_response[awaiting_response_key] and time() - sent_time < timeout:
-        #     # await asyncio.sleep(1)
-        #     self.broker.parse_response()
-        #     sleep(0.1)
-
-        # result = self.awaiting_response.pop(awaiting_response_key, None)
-        result = self.broker.parse_response(self.broker.clients[self.clients.get(receiver)]['conn'])
-        if result == "OK":
-            result = self.broker.parse_response(self.broker.clients[self.clients.get(receiver)]['conn'])
-        if result:
-            return self.protocol.parse_on_receive(result)[2]
+        receiver_address = self.clients.get(receiver, None)
+        if not receiver_address:
+            return None
         else:
-            raise TimeoutError(f"There was no response from {receiver} to {command} command.")
+            awaiting_response_key = receiver_address, command
+
+            sent_time = time()
+            self.awaiting_response[awaiting_response_key] = None
+            while self.awaiting_response[awaiting_response_key] is None and time() - sent_time < timeout:
+                sleep(0.1)
+
+            message = self.awaiting_response.get(awaiting_response_key, None)
+            result = self.protocol.parse_on_receive(message)[2]
+            return result
 
     def on_input_receive(self, sender: str, message: str):
         print(sender, message)
@@ -111,6 +138,12 @@ class GameClientProxy(GameProxy):
 
         user_input = ProtocolCommand("user_input", self.on_input_request, None)
         self.protocol.add_command(user_input)
+
+        print_to_client = ProtocolCommand("print", self.print_text_on_client, None)
+        self.protocol.add_command(print_to_client)
+
+    def print_text_on_client(self, sender, message):
+        print(message)
 
     def on_input_request(self, sender, message):
         txt = input(message)
